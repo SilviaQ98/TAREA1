@@ -1,0 +1,1 @@
+insert into books (isbn, title, author_id, price) values ('55-55','titles2',3,20);

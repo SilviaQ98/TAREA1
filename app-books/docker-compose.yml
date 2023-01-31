@@ -1,0 +1,55 @@
+version: '3'
+services:
+  traefik:
+    image: traefik:v2.9
+    command: --api.insecure=true --providers.docker
+    ports:
+      - "80:80"
+      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  postgres-sql:
+    image: postgres:alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: silvia05
+      POSTGRES_DB: Distribuida
+    ports:
+      - 5432:5432
+
+  author-service:
+    image: silviaq/app-authors:2.0.0
+    environment:
+      DB_USER: postgres
+      DB_PASSWORD: silvia05
+      DB_URL: jdbc:postgresql://postgres-sql:5432/Distribuida
+    depends_on:
+      - postgres-sql
+      - traefik
+    deploy:
+      replicas: 2
+      #ports:
+      # - 7090:7090
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.author-service.rule=PathPrefix(`/authors`)"
+      - "traefik.http.services.author-service.loadbalancer.server.port=7090"
+
+  books-service:
+    image: silviaq/app-books:2.0.0
+    environment:
+      DB_USER: postgres
+      DB_PASSWORD: silvia05
+      DB_URL: jdbc:postgresql://postgres-sql:5432/Distribuida
+    depends_on:
+      - author-service
+      - traefik
+    deploy:
+      replicas: 1
+      #ports:
+      # - 7001:7001
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.books-service.rule=PathPrefix(`/books`)"
+      - "traefik.http.services.books-service.loadbalancer.server.port=7001"
